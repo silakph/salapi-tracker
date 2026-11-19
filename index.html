@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Salapi">
+  <meta name="theme-color" content="#FFF8EC">
+  <title>Salapi Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #FFF8EC;
+      --ink: #22201C;
+      --muted: #5E574C;
+      --card: #FFFFFF;
+      --soft: #F3EADA;
+      --coral: #F4C2B5;
+      --sage: #C8DABB;
+      --mustard: #F2D58B;
+      --sky: #BAD3E8;
+      --plum: #D4C1DD;
+      --rose: #EBC5CE;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      padding-top: env(safe-area-inset-top, 0);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+      min-height: 100vh;
+    }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    :focus-visible { outline: 3px solid #2A4B6B; outline-offset: 2px; }
+    .display { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; letter-spacing: -0.5px; }
+
+    .container { max-width: 480px; margin: 0 auto; padding: 26px 20px 80px; display: flex; flex-direction: column; gap: 22px; }
+
+    /* top bar */
+    .top { display: flex; justify-content: space-between; align-items: center; }
+    .logo { font-size: 24px; }
+    .month { font-size: 12px; font-weight: 600; letter-spacing: 1px; padding: 6px 12px; border-radius: 99px; background: var(--ink); color: var(--paper); }
+    .income { font-size: 13px; color: var(--muted); margin-top: -12px; }
+    .income b { color: var(--ink); }
+
+    /* 15th / 30th switch */
+    .tabs { display: flex; gap: 8px; }
+    .tab { flex: 1; min-height: 46px; border-radius: 14px; border: 2px solid var(--ink); background: transparent; font-weight: 700; font-size: 15px; }
+    .tab.on { background: var(--ink); color: var(--paper); }
+
+    /* the payday card */
+    .hero { position: relative; border-radius: 24px; padding: 22px 20px 14px; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); background: var(--coral); }
+    .hero[data-cut="30"] { background: var(--sage); }
+    .hero-label { font-size: 13px; font-weight: 600; }
+    .hero-total { font-size: 54px; line-height: 1; letter-spacing: -2px; margin-top: 6px; }
+    .bar { margin-top: 18px; height: 16px; border-radius: 99px; background: var(--paper); border: 2px solid var(--ink); overflow: hidden; }
+    .bar > div { height: 100%; width: 0; background: var(--ink); border-radius: 99px; transition: width .45s cubic-bezier(.3, 1.4, .6, 1); }
+    .hero-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 14px; font-weight: 600; }
+    .badge { position: absolute; top: -14px; right: 16px; width: 76px; height: 76px; border-radius: 50%; background: var(--mustard); border: 2px solid var(--ink);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(12deg); }
+    .badge b { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 22px; line-height: 1; }
+    .badge span { font-size: 10px; font-weight: 700; }
+    .reset { margin-top: 10px; background: none; border: 0; padding: 8px 0; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+    /* bills and allocations */
+    .list { display: flex; flex-direction: column; gap: 8px; }
+    .item { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 8px 14px 8px 10px; border-radius: 16px; border: 2px solid var(--ink);
+      background: var(--card); cursor: pointer; user-select: none; transition: background .2s; }
+    .item.paid { background: var(--soft); }
+    .check { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--ink); background: var(--card); display: grid; place-items: center; padding: 0; }
+    .check svg { opacity: 0; }
+    .item.paid .check svg { opacity: 1; }
+    .item.just .check { animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
+    @keyframes pop { 0% { transform: scale(.55); } 100% { transform: scale(1); } }
+    .name-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .name { font-weight: 600; font-size: 15px; }
+    .item.paid .name, .item.paid .amount { text-decoration: line-through; text-decoration-thickness: 2px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .pill { border: 0; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; line-height: 1.5; }
+    .pill.add { background: transparent; border: 1.5px dashed #8A8172; color: var(--muted); padding: 1px 8px; }
+    .due { font-size: 12px; color: var(--muted); }
+    .amount { font-size: 19px; white-space: nowrap; }
+
+    /* select items to add them up */
+    .list-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: -10px; }
+    .list-head h2 { margin: 0; font-size: 22px; }
+    .sel-btn { min-height: 40px; padding: 0 16px; border-radius: 99px; border: 2px solid var(--ink); background: var(--card); font-weight: 700; font-size: 13px; }
+    .sel-btn.on { background: var(--ink); color: var(--paper); }
+    .selecting .item .check { opacity: .35; }
+    .item.sel, .item.paid.sel { background: var(--mustard); box-shadow: 3px 3px 0 var(--ink); }
+    .selbar { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0)); transform: translateX(-50%); width: calc(100% - 28px); max-width: 452px;
+      background: var(--ink); color: var(--paper); border-radius: 20px; padding: 14px 16px; display: none; z-index: 50; box-shadow: 4px 4px 0 rgba(34, 32, 28, .25); }
+    .selecting .selbar { display: block; }
+    .selecting .container { padding-bottom: 190px; }
+    .selbar-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .selbar-count { font-size: 13px; font-weight: 600; }
+    .selbar-total { font-size: 34px; line-height: 1; letter-spacing: -1px; }
+    .selbar-split { font-size: 12px; color: #E9E1D2; margin-top: 6px; }
+    .selbar-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .selbar-actions button { flex: 1; min-height: 44px; border-radius: 12px; border: 2px solid var(--paper); background: transparent; color: var(--paper); font-weight: 700; font-size: 13px; }
+    .selbar-actions .done { background: var(--paper); color: var(--ink); }
+    .selbar :focus-visible { outline-color: var(--mustard); }
+
+    /* add / edit / delete items */
+    .edit-btn { flex: none; width: 36px; height: 36px; margin: 0 -8px 0 -4px; border-radius: 50%; border: 0; background: transparent; display: grid; place-items: center; padding: 0; color: var(--muted); }
+    .edit-btn:hover { background: var(--soft); color: var(--ink); }
+    .selecting .edit-btn { visibility: hidden; }
+    .add-item { min-height: 52px; border-radius: 16px; border: 2px dashed var(--ink); background: transparent; font-weight: 700; font-size: 15px; margin-top: -12px; }
+    .add-item:hover { background: var(--card); }
+    .selecting .add-item { display: none; }
+    .field { display: flex; flex-direction: column; }
+    .field .tag-input { margin-bottom: 14px; }
+    select.tag-input { height: 49px; padding: 0 10px; }
+    .cut-pick { display: flex; gap: 8px; margin-bottom: 14px; }
+    .cut-opt { flex: 1; min-height: 46px; border-radius: 12px; border: 2px solid var(--ink); background: var(--card); font-weight: 700; font-size: 14px; }
+    .cut-opt.on { background: var(--ink); color: var(--paper); }
+    .row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .form-msg { color: #9A2D1F; font-size: 13px; font-weight: 600; min-height: 18px; margin: -4px 0 10px; }
+    .btn.danger { color: #9A2D1F; border-color: #9A2D1F; }
+
+    /* savings jars */
+    .section-head h2 { margin: 6px 0 2px; font-size: 26px; }
+    .section-head p { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+    .jars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .jar { position: relative; height: 158px; border-radius: 18px 18px 24px 24px; border: 2px solid var(--ink); background: var(--card); overflow: hidden; padding: 0; text-align: left; }
+    .jar .fill { position: absolute; left: 0; right: 0; bottom: 0; border-top: 2px solid var(--ink); transition: height .5s cubic-bezier(.3, 1.3, .6, 1); }
+    .jar .fill.empty { border-top: 0; }
+    .jar .txt { position: absolute; inset: 0; padding: 12px 10px; display: flex; flex-direction: column; justify-content: space-between; }
+    .jar-name { font-size: 12px; font-weight: 700; line-height: 1.2; }
+    .jar-pct { font-size: 24px; line-height: 1; display: block; }
+    .jar-amt { font-size: 11px; font-weight: 700; display: block; margin-top: 2px; }
+    .jar-of { font-size: 10px; font-weight: 500; display: block; }
+
+    /* sheets (tags, jar deposits) */
+    .backdrop { position: fixed; inset: 0; background: rgba(34, 32, 28, .55); display: none; align-items: flex-end; justify-content: center; z-index: 100; }
+    .backdrop.open { display: flex; }
+    .sheet { background: var(--paper); width: 100%; max-width: 480px; max-height: 90vh; overflow: auto;
+      padding: 24px 22px calc(24px + env(safe-area-inset-bottom, 0)); border: 2px solid var(--ink); border-bottom: 0; border-radius: 24px 24px 0 0; }
+    @media (min-width: 521px) {
+      .backdrop { align-items: center; padding: 24px; }
+      .sheet { border-bottom: 2px solid var(--ink); border-radius: 24px; box-shadow: 4px 4px 0 var(--ink); }
+    }
+    .sheet-title { font-size: 28px; margin: 0 0 4px; line-height: 1.1; }
+    .sheet-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .money { display: flex; align-items: baseline; gap: 6px; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 16px; background: var(--card); margin-bottom: 18px; }
+    .money span { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 30px; color: var(--muted); }
+    .money input { flex: 1; min-width: 0; border: 0; background: transparent; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 40px;
+      color: var(--ink); outline: none; padding: 0; -moz-appearance: textfield; }
+    .money input::-webkit-outer-spin-button, .money input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .actions.three { grid-template-columns: 1fr 1fr 1fr; }
+    .btn { min-height: 48px; border: 2px solid var(--ink); border-radius: 14px; background: var(--card); font-weight: 700; font-size: 14px; }
+    .btn.primary { background: var(--ink); color: var(--paper); }
+    .btn:active { transform: translate(1px, 1px); }
+    .label { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+    .tag-current, .tag-library { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; min-height: 24px; }
+    .tag-current .pill, .tag-library .pill { font-size: 12px; padding: 5px 11px; }
+    .tag-current .pill::after { content: ' ✕'; opacity: .6; }
+    .tag-input { width: 100%; border: 2px solid var(--ink); background: var(--card); padding: 12px 14px; border-radius: 14px; font: inherit; font-size: 16px; margin-bottom: 12px; outline: none; color: var(--ink); }
+    .swatches { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .swatch { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--ink); padding: 0; }
+    .swatch.on { box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--ink); }
+
+    footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 18px; }
+
+    /* a little burst when a payday is fully sorted */
+    .confetti { position: absolute; left: 50%; top: 45%; width: 9px; height: 13px; border: 1.5px solid var(--ink); border-radius: 2px; pointer-events: none;
+      animation: burst 1.1s cubic-bezier(.2, .7, .4, 1) forwards; }
+    @keyframes burst { to { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .confetti { display: none; }
+      .item.just .check { animation: none; }
+      .bar > div, .jar .fill { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <span class="logo display">salapi.</span>
+      <span class="month" id="monthLabel">—</span>
+    </div>
+    <div class="income">Income <b>₱54,000</b> · ₱27,000 each payday, on the 15th and 30th</div>
+
+    <div class="tabs" role="tablist" aria-label="Payday">
+      <button class="tab" type="button" role="tab" data-cut="15">15th payday</button>
+      <button class="tab" type="button" role="tab" data-cut="30">30th payday</button>
+    </div>
+
+    <section class="hero" id="hero">
+      <div class="hero-label" id="heroLabel">planned this payday</div>
+      <div class="hero-total display" id="heroTotal">₱0</div>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="barWrap"><div id="bar"></div></div>
+      <div class="hero-row">
+        <span><span id="doneText">₱0</span> sorted</span>
+        <span id="leftText">₱0 to go</span>
+      </div>
+      <div class="badge" aria-hidden="true"><b id="badgePct">0%</b><span id="badgeWord">done!</span></div>
+      <button class="reset" type="button" id="resetBtn">New month? Reset the 15th</button>
+    </section>
+
+    <div class="list-head">
+      <h2 class="display">bills &amp; spending</h2>
+      <button class="sel-btn" type="button" id="selBtn" aria-pressed="false">Select</button>
+    </div>
+    <div class="list" id="items"></div>
+    <button class="add-item" type="button" id="addItem">+ Add item</button>
+
+    <section>
+      <div class="section-head">
+        <h2 class="display">savings jars</h2>
+        <p>Tap a jar to put money in or take it out</p>
+      </div>
+      <div class="jars" id="jars"></div>
+    </section>
+
+    <footer>Saved on this device · <span id="versionLabel">v2</span></footer>
+  </div>
+
+  <!-- subtotal of the selected items -->
+  <div class="selbar" id="selbar" role="region" aria-label="Subtotal of selected items">
+    <div class="selbar-top" aria-live="polite">
+      <span class="selbar-count" id="selCount">0 selected</span>
+      <span class="selbar-total display" id="selTotal">₱0</span>
+    </div>
+    <div class="selbar-split" id="selSplit">Tap items to add them up</div>
+    <div class="selbar-actions">
+      <button type="button" id="selAll">Select all</button>
+      <button type="button" id="selClear">Clear</button>
+      <button type="button" class="done" id="selDone">Done</button>
+    </div>
+  </div>
+
+  <!-- Tag editor -->
+  <div class="backdrop" id="tagModal">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tagModalTitle">
+      <h3 class="sheet-title display" id="tagModalTitle">Tags</h3>
+      <div class="sheet-sub" id="tagModalSub">Type a tag name, pick a colour, add it</div>
+      <div class="label">On this item · tap to remove</div>
+      <div class="tag-current" id="tagCurrent"></div>
+      <label class="label" for="tagInput">New tag</label>
+      <input type="text" class="tag-input" id="tagInput" maxlength="24" placeholder="e.g. essential, wants, family">
+      <div class="swatches" id="tagSwatches"></div>
+      <div class="label" id="libraryLabel" hidden>Quick add from your tags</div>
+      <div class="tag-library" id="tagLibrary"></div>
+      <div class="actions">
+        <button class="btn" type="button" id="tagModalCancel">Close</button>
+        <button class="btn primary" type="button" id="tagModalAdd">Add tag</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / edit an item -->
+  <div class="backdrop" id="itemModal">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="itemTitle">
+      <h3 class="sheet-title display" id="itemTitle">Add item</h3>
+      <div class="sheet-sub">Saved on this device with the rest of your ledger</div>
+      <div class="field">
+        <label class="label" for="itemName">Name</label>
+        <input type="text" class="tag-input" id="itemName" maxlength="40" placeholder="e.g. Phone bill" autocomplete="off">
+      </div>
+      <div class="label" id="itemAmountLabel">Amount</div>
+      <div class="money"><span>₱</span><input type="number" id="itemAmount" min="0" step="0.01" inputmode="decimal" aria-labelledby="itemAmountLabel"></div>
+      <div class="label" id="itemCutLabel">Payday</div>
+      <div class="cut-pick" role="group" aria-labelledby="itemCutLabel">
+        <button class="cut-opt" type="button" data-cut="15">15th</button>
+        <button class="cut-opt" type="button" data-cut="30">30th</button>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label class="label" for="itemDue">Due day · optional</label>
+          <input type="number" class="tag-input" id="itemDue" min="1" max="31" inputmode="numeric" placeholder="e.g. 24">
+        </div>
+        <div class="field">
+          <label class="label" for="itemJar">Goes in a jar</label>
+          <select class="tag-input" id="itemJar"></select>
+        </div>
+      </div>
+      <p class="form-msg" id="itemMsg" role="alert"></p>
+      <div class="actions three" id="itemActions">
+        <button class="btn danger" type="button" id="itemDelete">Delete</button>
+        <button class="btn" type="button" id="itemCancel">Cancel</button>
+        <button class="btn primary" type="button" id="itemSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jar deposit / withdrawal -->
+  <div class="backdrop" id="modal">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 class="sheet-title display" id="modalTitle">—</h3>
+      <div class="sheet-sub" id="modalSub">—</div>
+      <div class="money">
+        <span>₱</span>
+        <input type="number" id="modalInput" min="0" step="0.01" inputmode="decimal" aria-label="Amount">
+      </div>
+      <div class="actions three">
+        <button class="btn" type="button" id="modalCancel">Cancel</button>
+        <button class="btn" type="button" id="modalSubtract">Take out</button>
+        <button class="btn primary" type="button" id="modalAdd">Put in</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+'use strict';
+
+const STORAGE_KEY = 'payday-ledger-v1';   // unchanged, so everything already saved on this device carries over
+const VERSION = '2.2';
+
+const TAG_PALETTE = [
+  { name: 'coral',   bg: '#F4C2B5', fg: '#7A3F2E' },
+  { name: 'mustard', bg: '#F2D58B', fg: '#6B4A0F' },
+  { name: 'sage',    bg: '#C8DABB', fg: '#3C5A35' },
+  { name: 'sky',     bg: '#BAD3E8', fg: '#2A4B6B' },
+  { name: 'rose',    bg: '#EBC5CE', fg: '#6E2E40' },
+  { name: 'plum',    bg: '#D4C1DD', fg: '#4F3D63' },
+];
+const DEFAULT_TAG_COLOR = 'sage';
+const JAR_COLORS = ['#F4C2B5', '#BAD3E8', '#C8DABB', '#F2D58B', '#D4C1DD', '#EBC5CE'];
+const CONFETTI = ['#F4C2B5', '#F2D58B', '#C8DABB', '#BAD3E8', '#EBC5CE', '#D4C1DD'];
+
+// --- Default plan (the budget we worked out together) -------------------------
+const defaults = () => ({
+  month: new Date().toISOString().slice(0, 7),
+  items15: [
+    { id: 'mp2',       name: 'MP2 savings',            amount: 5000, due: 15,   paid: false },
+    { id: 'electric',  name: 'Electric',           amount: 5000, due: 24,   paid: false },
+    { id: 'globe',     name: 'Globe internet',     amount: 1500, due: 26,   paid: false },
+    { id: 'milk',      name: 'Milk',           amount: 1000, due: null, paid: false },
+    { id: 'groceries', name: 'Groceries',          amount: 1000, due: null, paid: false },
+    { id: 'personal1', name: 'Personal allowance', amount:  500, due: null, paid: false },
+    { id: 'family1',   name: 'Family budget',      amount: 4000, due: null, paid: false },
+    { id: 'gas',       name: 'Gas',                amount: 2000, due: null, paid: false },
+    { id: 'carmaint',  name: 'Car maintenance',    amount: 1000, due: null, paid: false },
+    { id: 'buffer1',   name: 'Buffer',             amount: 3000, due: null, paid: false },
+    { id: 'online',    name: 'Online purchases',   amount: 3000, due: null, paid: false },
+  ],
+  items30: [
+    { id: 'pldt',      name: 'PLDT internet',      amount: 1500, due:  5, paid: false },
+    { id: 'water',     name: 'Water',              amount: 1000, due:  7, paid: false },
+    { id: 'netflix',   name: 'Netflix',            amount:  500, due:  3, paid: false },
+    { id: 'google',    name: 'Google One',         amount:  200, due:  3, paid: false },
+    { id: 'spotify',   name: 'Spotify',            amount:  200, due:  6, paid: false },
+    { id: 'chatgpt',   name: 'ChatGPT',            amount:  500, due:  8, paid: false },
+    { id: 'canva',     name: 'Canva',              amount:  300, due:  8, paid: false },
+    { id: 'family2',   name: 'Family budget',      amount: 4000, due: null, paid: false },
+    { id: 'personal2', name: 'Personal allowance', amount:  500, due: null, paid: false },
+    { id: 'insa_d',  name: 'Insurance A',       amount: 3000, due: null, paid: false, fundId: 'insa' },
+    { id: 'insb_d',  name: 'Insurance B',       amount: 1667, due: null, paid: false, fundId: 'insb' },
+    { id: 'carins_d',  name: 'Car insurance',      amount: 2083, due: null, paid: false, fundId: 'carins' },
+    { id: 'pms_d',     name: 'PMS',                amount: 1667, due: null, paid: false, fundId: 'pms' },
+    { id: 'ef_d',      name: 'Emergency fund',     amount: 7000, due: null, paid: false, fundId: 'ef' },
+    { id: 'buffer2',   name: 'Buffer',             amount: 2883, due: null, paid: false },
+  ],
+  funds: [
+    { id: 'insa', name: 'Insurance A',   target:   9000, monthly: 3000, cadence: 'every 3 months',  saved: 0 },
+    { id: 'insb', name: 'Insurance B',   target:   5000, monthly: 1667, cadence: 'every 3 months',  saved: 0 },
+    { id: 'carins', name: 'Car insurance',  target:  25000, monthly: 2083, cadence: 'every April',     saved: 0 },
+    { id: 'pms',    name: 'PMS',            target:  10000, monthly: 1667, cadence: 'April & October', saved: 0 },
+    { id: 'ef',     name: 'Emergency fund', target: 150000, monthly: 7000, cadence: 'long-term goal',  saved: 0 },
+  ],
+});
+
+// --- State -------------------------------------------------------------------
+let state = loadState();
+if (!Array.isArray(state.deleted)) state.deleted = [];
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaults();
+    const stored = JSON.parse(raw);
+    const fresh = defaults();
+    const s15 = stored.items15 || [], s30 = stored.items30 || [];
+    const seen = new Set([...s15, ...s30].map(x => x.id));
+    const deleted = Array.isArray(stored.deleted) ? stored.deleted : [];
+    const freshById = new Map([...fresh.items15, ...fresh.items30].map(x => [x.id, x]));
+    return {
+      month: stored.month || fresh.month,
+      items15: mergeItems(fresh.items15, s15, seen, deleted, freshById),
+      items30: mergeItems(fresh.items30, s30, seen, deleted, freshById),
+      funds:   mergeList(fresh.funds,   stored.funds   || []),
+      deleted,
+    };
+  } catch {
+    return defaults();
+  }
+}
+function mergeList(freshList, storedList) {
+  const storedById = new Map(storedList.map(x => [x.id, x]));
+  return freshList.map(item => {
+    const existing = storedById.get(item.id);
+    return existing ? { ...item, ...existing, name: item.name, amount: item.amount } : item;
+  });
+}
+// Items: what's saved wins once you've edited it; items you added are kept; built-in items you
+// deleted stay gone; built-in items not saved anywhere yet (new in the plan) are added at the end
+function mergeItems(freshList, storedList, seen, deleted, freshById) {
+  const out = [];
+  storedList.forEach(st => {
+    const f = freshById.get(st.id);
+    if (f) out.push(st.edited ? { ...f, ...st } : { ...f, ...st, name: f.name, amount: f.amount });
+    else if (st.custom) out.push(st);
+  });
+  freshList.forEach(f => { if (!seen.has(f.id) && !deleted.includes(f.id)) out.push(f); });
+  return out;
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+}
+
+// --- Helpers -----------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const peso = n => '₱' + Math.round(Number(n) || 0).toLocaleString('en-PH');
+const listFor = c => (c === '15' ? state.items15 : state.items30);
+const paletteOf = name => TAG_PALETTE.find(p => p.name === name) || TAG_PALETTE[0];
+function monthLabel() {
+  const [y, m] = (state.month || new Date().toISOString().slice(0, 7)).split('-');
+  const d = new Date(Number(y), Number(m) - 1, 1);
+  return d.toLocaleDateString('en-PH', { month: 'short', year: 'numeric' }).toUpperCase();
+}
+function make(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+function cutoffTotals(c) {
+  let paid = 0, total = 0;
+  listFor(c).forEach(i => { total += i.amount; if (i.paid) paid += i.amount; });
+  return { paid, total, left: total - paid };
+}
+
+// Open on the payday you're in: the 15th covers the 15th to the 29th, the 30th covers the rest
+let cut = (() => { const d = new Date().getDate(); return d >= 15 && d < 30 ? '15' : '30'; })();
+let justToggled = null;
+// Select mode: tapping items picks them (across both paydays) and the bar adds them up; nothing is saved
+let selecting = false;
+const picked = new Set();
+const pickKey = (c, id) => c + ':' + id;
+
+// --- Rendering ---------------------------------------------------------------
+function render() {
+  $('monthLabel').textContent = monthLabel();
+  $('versionLabel').textContent = 'v' + VERSION;
+  document.querySelectorAll('.tab').forEach(b => {
+    const on = b.dataset.cut === cut;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  renderHero();
+  renderItems();
+  renderFunds();
+  renderSelection();
+  justToggled = null;
+}
+
+function renderSelection() {
+  document.body.classList.toggle('selecting', selecting);
+  const btn = $('selBtn');
+  btn.classList.toggle('on', selecting);
+  btn.setAttribute('aria-pressed', selecting ? 'true' : 'false');
+  btn.textContent = selecting ? 'Selecting' : 'Select';
+  let n = 0, total = 0, paid = 0;
+  const from = new Set();
+  ['15', '30'].forEach(c => listFor(c).forEach(i => {
+    if (!picked.has(pickKey(c, i.id))) return;
+    n++; total += i.amount; if (i.paid) paid += i.amount; from.add(c);
+  }));
+  $('selCount').textContent = n === 1 ? '1 selected' : `${n} selected`;
+  $('selTotal').textContent = peso(total);
+  $('selSplit').textContent = n
+    ? `${peso(paid)} paid · ${peso(total - paid)} not yet` + (from.size === 2 ? ' · from both paydays' : '')
+    : 'Tap items to add them up';
+  const allHere = listFor(cut).every(i => picked.has(pickKey(cut, i.id)));
+  $('selAll').textContent = allHere ? 'Unselect all' : `All of the ${cut}th`;
+}
+
+function renderHero() {
+  const { paid, total, left } = cutoffTotals(cut);
+  const pct = total > 0 ? Math.round(paid / total * 100) : 0;
+  $('hero').dataset.cut = cut;
+  $('heroLabel').textContent = `planned for the ${cut}th`;
+  $('heroTotal').textContent = peso(total);
+  $('bar').style.width = pct + '%';
+  $('barWrap').setAttribute('aria-valuenow', pct);
+  $('barWrap').setAttribute('aria-label', `${pct}% sorted`);
+  $('doneText').textContent = peso(paid);
+  $('leftText').textContent = left === 0 && total > 0 ? 'All sorted!' : `${peso(left)} to go`;
+  $('badgePct').textContent = pct + '%';
+  $('badgeWord').textContent = pct === 100 ? 'yay!' : 'done!';
+  $('resetBtn').textContent = `New month? Reset the ${cut}th`;
+  $('addItem').textContent = `+ Add item to the ${cut}th`;
+}
+
+function renderItems() {
+  const host = $('items');
+  host.replaceChildren();
+  listFor(cut).forEach(item => {
+    const isPicked = picked.has(pickKey(cut, item.id));
+    const row = make('div', 'item' + (item.paid ? ' paid' : '') + (justToggled === item.id ? ' just' : '') + (selecting && isPicked ? ' sel' : ''));
+    const tags = Array.isArray(item.tags) ? item.tags : [];
+    const firstTag = tags[0] ? paletteOf(tags[0].color) : null;
+
+    const check = make('button', 'check');
+    check.type = 'button';
+    check.setAttribute('aria-pressed', (selecting ? isPicked : item.paid) ? 'true' : 'false');
+    check.setAttribute('aria-label', selecting ? `${item.name}: ${isPicked ? 'selected' : 'not selected'}` : `${item.name}: ${item.paid ? 'paid' : 'not paid yet'}`);
+    if (item.paid) check.style.background = firstTag ? firstTag.bg : 'var(--mustard)';
+    check.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="#22201C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    const wrap = make('div', 'name-wrap');
+    wrap.append(make('span', 'name', item.name));
+    const meta = make('div', 'meta');
+    tags.forEach(tag => {
+      const p = paletteOf(tag.color), pill = make('button', 'pill', tag.label);
+      pill.type = 'button';
+      pill.style.background = p.bg; pill.style.color = p.fg;
+      pill.addEventListener('click', e => { if (selecting) return; e.stopPropagation(); openTagEditor(cut, item.id); });
+      meta.append(pill);
+    });
+    const add = make('button', 'pill add', tags.length ? '+' : '+ tag');
+    add.type = 'button';
+    add.setAttribute('aria-label', `Add a tag to ${item.name}`);
+    add.addEventListener('click', e => { if (selecting) return; e.stopPropagation(); openTagEditor(cut, item.id); });
+    meta.append(add);
+    if (item.due) meta.append(make('span', 'due', `due ${item.due}`));
+    if (item.fundId) meta.append(make('span', 'due', 'goes in a jar'));
+    wrap.append(meta);
+
+    const edit = make('button', 'edit-btn');
+    edit.type = 'button';
+    edit.setAttribute('aria-label', `Edit ${item.name}`);
+    edit.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
+    edit.addEventListener('click', e => { if (selecting) return; e.stopPropagation(); openItemEditor(cut, item.id); });
+    row.append(check, wrap, make('div', 'amount display', peso(item.amount)), edit);
+    row.addEventListener('click', () => {
+      if (!selecting) return toggleItem(cut, item.id);
+      const k = pickKey(cut, item.id);
+      if (picked.has(k)) picked.delete(k); else picked.add(k);
+      render();
+    });
+    host.append(row);
+  });
+}
+
+function renderFunds() {
+  const host = $('jars');
+  host.replaceChildren();
+  state.funds.forEach((f, i) => {
+    const pct = f.target > 0 ? Math.min(100, Math.round(f.saved / f.target * 100)) : 0;
+    const jar = make('button', 'jar');
+    jar.type = 'button';
+    jar.setAttribute('aria-label', `${f.name}: ${peso(f.saved)} of ${peso(f.target)}, ${pct}%. Tap to put money in or take it out.`);
+    const fill = make('span', 'fill' + (pct === 0 ? ' empty' : ''));
+    fill.style.height = pct + '%';
+    fill.style.background = JAR_COLORS[i % JAR_COLORS.length];
+    const txt = make('span', 'txt');
+    const bottom = make('span');
+    bottom.append(make('span', 'jar-pct display', pct + '%'), make('span', 'jar-amt', peso(f.saved)), make('span', 'jar-of', 'of ' + peso(f.target)));
+    txt.append(make('span', 'jar-name', f.name), bottom);
+    jar.append(fill, txt);
+    jar.addEventListener('click', () => openFundModal(f.id));
+    host.append(jar);
+  });
+}
+
+function celebrate() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const hero = $('hero');
+  for (let i = 0; i < 26; i++) {
+    const c = make('span', 'confetti');
+    const a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 120;
+    c.style.background = CONFETTI[i % CONFETTI.length];
+    c.style.setProperty('--x', Math.cos(a) * d + 'px');
+    c.style.setProperty('--y', Math.sin(a) * d - 40 + 'px');
+    c.style.setProperty('--r', (Math.random() * 720 - 360) + 'deg');
+    hero.append(c);
+    setTimeout(() => c.remove(), 1200);
+  }
+}
+
+// --- Interactions ------------------------------------------------------------
+function toggleItem(cutoff, id) {
+  const item = listFor(cutoff).find(i => i.id === id);
+  if (!item) return;
+  item.paid = !item.paid;
+  // items linked to a jar move money into it (or back out when unticked)
+  if (item.fundId) {
+    const fund = state.funds.find(f => f.id === item.fundId);
+    if (fund) fund.saved = Math.max(0, fund.saved + (item.paid ? item.amount : -item.amount));
+  }
+  justToggled = id;
+  saveState();
+  render();
+  if (item.paid && cutoffTotals(cutoff).left === 0) celebrate();
+}
+
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { cut = b.dataset.cut; render(); }));
+
+function endSelecting() { selecting = false; picked.clear(); render(); }
+$('selBtn').addEventListener('click', () => { if (selecting) endSelecting(); else { selecting = true; render(); } });
+$('selDone').addEventListener('click', endSelecting);
+$('selClear').addEventListener('click', () => { picked.clear(); render(); });
+$('selAll').addEventListener('click', () => {
+  const keys = listFor(cut).map(i => pickKey(cut, i.id));
+  if (keys.every(k => picked.has(k))) keys.forEach(k => picked.delete(k)); else keys.forEach(k => picked.add(k));
+  render();
+});
+
+$('resetBtn').addEventListener('click', () => {
+  if (!confirm(`Reset the ${cut}th for a new month?\n\nAll ticks clear, and money that ticked items put into jars comes back out.`)) return;
+  listFor(cut).forEach(item => {
+    if (item.paid && item.fundId) {
+      const fund = state.funds.find(f => f.id === item.fundId);
+      if (fund) fund.saved = Math.max(0, fund.saved - item.amount);
+    }
+    item.paid = false;
+  });
+  state.month = new Date().toISOString().slice(0, 7);
+  saveState();
+  render();
+});
+
+// --- Item sheet (add, edit, delete) ---------------------------------------------
+let itemEdit = null, itemCut = '15';
+const fundById = id => state.funds.find(f => f.id === id);
+function renderItemCut() {
+  document.querySelectorAll('.cut-opt').forEach(b => {
+    const on = b.dataset.cut === itemCut;
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+function openItemEditor(c, id) {
+  const item = id ? listFor(c).find(i => i.id === id) : null;
+  itemEdit = { cut: c, id: item ? item.id : null };
+  itemCut = c;
+  $('itemTitle').textContent = item ? 'Edit item' : 'Add item';
+  $('itemName').value = item ? item.name : '';
+  $('itemAmount').value = item ? item.amount : '';
+  $('itemDue').value = item && item.due ? item.due : '';
+  const jar = $('itemJar');
+  jar.replaceChildren(make('option', '', 'No jar'), ...state.funds.map(f => { const o = make('option', '', f.name); o.value = f.id; return o; }));
+  jar.options[0].value = '';
+  jar.value = item && item.fundId ? item.fundId : '';
+  $('itemDelete').hidden = !item;
+  $('itemActions').classList.toggle('three', !!item);
+  $('itemSave').textContent = item ? 'Save' : 'Add';
+  $('itemMsg').textContent = '';
+  renderItemCut();
+  $('itemModal').classList.add('open');
+  setTimeout(() => $('itemName').focus(), 60);
+}
+function closeItemEditor() { $('itemModal').classList.remove('open'); itemEdit = null; }
+function saveItem() {
+  if (!itemEdit) return;
+  const name = $('itemName').value.trim();
+  const amount = Math.round((Number($('itemAmount').value) || 0) * 100) / 100;
+  const dueRaw = parseInt($('itemDue').value, 10);
+  const due = dueRaw >= 1 ? Math.min(31, dueRaw) : null;
+  const fundId = $('itemJar').value || null;
+  if (!name) { $('itemMsg').textContent = 'Give it a name.'; $('itemName').focus(); return; }
+  if (!(amount > 0)) { $('itemMsg').textContent = 'Add an amount.'; $('itemAmount').focus(); return; }
+  if (!itemEdit.id) {
+    listFor(itemCut).push({ id: 'c' + Date.now().toString(36), name, amount, due, paid: false, fundId, custom: true });
+  } else {
+    const from = listFor(itemEdit.cut), idx = from.findIndex(i => i.id === itemEdit.id), item = from[idx];
+    if (!item) return closeItemEditor();
+    // a ticked item already put money in a jar: move it to match the new amount / jar
+    if (item.paid) {
+      const was = fundById(item.fundId), now = fundById(fundId);
+      if (was) was.saved = Math.max(0, was.saved - item.amount);
+      if (now) now.saved += amount;
+    }
+    Object.assign(item, { name, amount, due, fundId, edited: true });
+    if (itemCut !== itemEdit.cut) {
+      picked.delete(pickKey(itemEdit.cut, item.id));
+      from.splice(idx, 1);
+      listFor(itemCut).push(item);
+    }
+  }
+  cut = itemCut;
+  saveState();
+  closeItemEditor();
+  render();
+}
+function deleteItem() {
+  if (!itemEdit || !itemEdit.id) return;
+  const from = listFor(itemEdit.cut), idx = from.findIndex(i => i.id === itemEdit.id), item = from[idx];
+  if (!item) return closeItemEditor();
+  const jarNote = item.paid && item.fundId ? '\n\nThe money it already put in its jar stays there.' : '';
+  if (!confirm(`Delete “${item.name}” from the ${itemEdit.cut}th?\n\nThis can’t be undone.${jarNote}`)) return;
+  from.splice(idx, 1);
+  if (!item.custom && !state.deleted.includes(item.id)) state.deleted.push(item.id);
+  picked.delete(pickKey(itemEdit.cut, item.id));
+  saveState();
+  closeItemEditor();
+  render();
+}
+$('addItem').addEventListener('click', () => openItemEditor(cut, null));
+document.querySelectorAll('.cut-opt').forEach(b => b.addEventListener('click', () => { itemCut = b.dataset.cut; renderItemCut(); }));
+$('itemSave').addEventListener('click', saveItem);
+$('itemDelete').addEventListener('click', deleteItem);
+$('itemCancel').addEventListener('click', closeItemEditor);
+$('itemModal').addEventListener('click', e => { if (e.target.id === 'itemModal') closeItemEditor(); });
+['itemName', 'itemAmount', 'itemDue'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveItem(); } }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('itemModal').classList.contains('open')) closeItemEditor(); });
+
+// --- Jar sheet ---------------------------------------------------------------
+function openFundModal(fundId) {
+  const fund = state.funds.find(f => f.id === fundId);
+  if (!fund) return;
+  const modal = $('modal'), input = $('modalInput');
+  $('modalTitle').textContent = fund.name;
+  $('modalSub').textContent = `${peso(fund.saved)} saved of ${peso(fund.target)} · ${fund.cadence}`;
+  input.value = fund.monthly || '';
+  modal.classList.add('open');
+  setTimeout(() => { input.focus(); input.select(); }, 60);
+
+  const cleanup = () => {
+    modal.classList.remove('open');
+    $('modalAdd').removeEventListener('click', onAdd);
+    $('modalSubtract').removeEventListener('click', onSub);
+    $('modalCancel').removeEventListener('click', cleanup);
+    modal.removeEventListener('click', onBackdrop);
+    document.removeEventListener('keydown', onKey);
+  };
+  const onAdd = () => { const amt = Number(input.value) || 0; if (amt > 0) fund.saved += amt; saveState(); render(); cleanup(); };
+  const onSub = () => { const amt = Number(input.value) || 0; if (amt > 0) fund.saved = Math.max(0, fund.saved - amt); saveState(); render(); cleanup(); };
+  const onBackdrop = e => { if (e.target === modal) cleanup(); };
+  const onKey = e => {
+    if (e.key === 'Escape') cleanup();
+    else if (e.key === 'Enter') { e.preventDefault(); onAdd(); }
+  };
+  $('modalAdd').addEventListener('click', onAdd);
+  $('modalSubtract').addEventListener('click', onSub);
+  $('modalCancel').addEventListener('click', cleanup);
+  modal.addEventListener('click', onBackdrop);
+  document.addEventListener('keydown', onKey);
+}
+
+// --- Tag sheet ---------------------------------------------------------------
+let tagEditingCutoff = null, tagEditingItemId = null, tagEditingColor = DEFAULT_TAG_COLOR;
+const editingItem = () => tagEditingCutoff ? listFor(tagEditingCutoff).find(i => i.id === tagEditingItemId) : null;
+
+function openTagEditor(cutoff, itemId) {
+  const item = listFor(cutoff).find(i => i.id === itemId);
+  if (!item) return;
+  tagEditingCutoff = cutoff; tagEditingItemId = itemId; tagEditingColor = DEFAULT_TAG_COLOR;
+  $('tagModalTitle').textContent = item.name;
+  $('tagInput').value = '';
+  renderTagEditorBody();
+  $('tagModal').classList.add('open');
+  setTimeout(() => $('tagInput').focus(), 60);
+}
+function closeTagEditor() {
+  $('tagModal').classList.remove('open');
+  tagEditingCutoff = null; tagEditingItemId = null;
+}
+function tagPill(tag, onClick) {
+  const p = paletteOf(tag.color), pill = make('button', 'pill', tag.label);
+  pill.type = 'button'; pill.style.background = p.bg; pill.style.color = p.fg;
+  pill.addEventListener('click', onClick);
+  return pill;
+}
+function renderTagEditorBody() {
+  const item = editingItem();
+  if (!item) return;
+  const tags = Array.isArray(item.tags) ? item.tags : [];
+  const current = $('tagCurrent');
+  current.replaceChildren();
+  if (!tags.length) current.append(make('span', 'due', 'No tags yet'));
+  tags.forEach((tag, idx) => {
+    const pill = tagPill(tag, () => removeTagFromItem(idx));
+    pill.setAttribute('aria-label', `Remove tag ${tag.label}`);
+    current.append(pill);
+  });
+
+  const sw = $('tagSwatches');
+  sw.replaceChildren();
+  TAG_PALETTE.forEach(c => {
+    const b = make('button', 'swatch' + (c.name === tagEditingColor ? ' on' : ''));
+    b.type = 'button'; b.style.background = c.bg;
+    b.setAttribute('aria-label', c.name); b.setAttribute('aria-pressed', c.name === tagEditingColor ? 'true' : 'false');
+    b.addEventListener('click', () => { tagEditingColor = c.name; renderTagEditorBody(); $('tagInput').focus(); });
+    sw.append(b);
+  });
+
+  const library = collectTagLibrary().filter(lib => !tags.some(t => t.label.toLowerCase() === lib.label.toLowerCase()));
+  $('libraryLabel').hidden = !library.length;
+  const lib = $('tagLibrary');
+  lib.replaceChildren(...library.map(l => tagPill(l, () => addTagToItem(l.label, l.color))));
+}
+function collectTagLibrary() {
+  const seen = new Map();
+  [...state.items15, ...state.items30].forEach(item => (item.tags || []).forEach(tag => seen.set(tag.label.toLowerCase(), { label: tag.label, color: tag.color })));
+  return Array.from(seen.values());
+}
+function addTagToItem(label, color) {
+  const item = editingItem();
+  if (!item || !label.trim()) return;
+  if (!Array.isArray(item.tags)) item.tags = [];
+  if (item.tags.some(t => t.label.toLowerCase() === label.trim().toLowerCase())) return;
+  item.tags.push({ label: label.trim(), color: color || DEFAULT_TAG_COLOR });
+  saveState(); renderTagEditorBody(); render();
+}
+function removeTagFromItem(idx) {
+  const item = editingItem();
+  if (!item || !Array.isArray(item.tags)) return;
+  item.tags.splice(idx, 1);
+  saveState(); renderTagEditorBody(); render();
+}
+$('tagModalAdd').addEventListener('click', () => {
+  const input = $('tagInput'), label = input.value.trim();
+  if (!label) { input.focus(); return; }
+  addTagToItem(label, tagEditingColor);
+  input.value = ''; input.focus();
+});
+$('tagInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('tagModalAdd').click(); } });
+$('tagModalCancel').addEventListener('click', closeTagEditor);
+$('tagModal').addEventListener('click', e => { if (e.target.id === 'tagModal') closeTagEditor(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('tagModal').classList.contains('open')) closeTagEditor(); });
+
+render();
+</script>
+</body>
+</html>
